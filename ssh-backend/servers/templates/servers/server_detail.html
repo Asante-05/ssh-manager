@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ server.name }}</title>
+</head>
+<body>
+
+<h1>{{ server.name }}</h1>
+
+<p>Host: {{ server.host }}</p>
+<p>User: {{ server.username }}</p>
+
+<form method="POST">
+
+    {% csrf_token %}
+
+    <label>Command:</label>
+
+    <input
+        type="text"
+        name="command"
+        placeholder="uptime"
+        required
+    >
+
+    <button type="submit">
+        Run
+    </button>
+
+</form>
+
+<h2>Command History</h2>
+
+{% for log in logs %}
+
+<div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+
+    <strong>{{ log.command }}</strong>
+
+    <br>
+
+    <small>{{ log.created_at }}</small>
+
+    <pre>{{ log.output }}</pre>
+
+</div>
+
+{% empty %}
+
+<p>No commands executed yet.</p>
+
+{% endfor %}
+
+{% if output %}
+<h2>Output</h2>
+
+<pre>
+{{ output }}
+</pre>
+{% endif %}
+
+</body>
+</html>

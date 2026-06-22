@@ -1,0 +1,56 @@
+<h2>Add Server</h2>
+
+<form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Add</button>
+    {% if messages %}
+    {% for message in messages %}
+        <p style="color: green;">{{ message }}</p>
+    {% endfor %}
+{% endif %}
+</form>
+
+<hr>
+
+<h2>Servers</h2>
+
+<h2>Servers</h2>
+
+<table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Host</th>
+            <th>Username</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for server in servers %}
+        <tr>
+            <td>{{ server.name }}</td>
+            <td>{{ server.host }}</td>
+            <td>{{ server.username }}</td>
+            <td>
+                <form method="POST" action="{% url 'delete_server' server.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" style="color: white; background: red; border: none; padding: 5px;">
+                        Delete
+                    </button>
+                </form>
+                <td>
+    <a href="{% url 'server_detail' server.id %}">
+        Connect
+    </a>
+</td>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4">No servers added yet</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

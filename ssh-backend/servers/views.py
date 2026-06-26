@@ -1,70 +1,73 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+
 from .models import Server, CommandLog
-from .forms import ServerForm
+from .serializers import ServerSerializer, CommandLogSerializer
 from .ssh_client import run_command
 
 
-def home(request):
+# GET /api/servers/         — list all servers
+# POST /api/servers/        — create a server
+@api_view(['GET', 'POST'])
+def server_list(request):
+    if request.method == 'GET':
+        servers = Server.objects.all()
+        serializer = ServerSerializer(servers, many=True)
+        return Response(serializer.data)
 
-    servers = Server.objects.all()
-
-    if request.method == "POST":
-        form = ServerForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Server added successfully!")
-            return redirect("/")
-
-    else:
-        form = ServerForm()
-
-    return render(request, "servers/home.html", {"servers": servers, "form": form})
-
-def delete_server(request, server_id):
-    if request.method == "POST":
-        server = get_object_or_404(Server, id=server_id)
-        server.delete()
-        messages.success(request, "Server deleted successfully!")
-    return redirect("/")
+    elif request.method == 'POST':
+        serializer = ServerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
-
-
+# GET /api/servers/<id>/    — get a single server
+# DELETE /api/servers/<id>/ — delete a server
+@api_view(['GET', 'DELETE'])
 def server_detail(request, server_id):
+    server = get_object_or_404(Server, id=server_id)
 
-    server = get_object_or_404(
-        Server,
-        id=server_id
+    if request.method == 'GET':
+        serializer = ServerSerializer(server)
+        return Response(serializer.data)
+
+    elif request.method == 'DELETE':
+        server.delete()
+        return Response({'message': 'Server deleted'}, status=status.HTTP_204_NO_CONTENT)
+
+
+# POST /api/servers/<id>/run/  — run a command on a server
+@api_view(['POST'])
+def run_server_command(request, server_id):
+    server = get_object_or_404(Server, id=server_id)
+    command = request.data.get('command')
+
+    if not command:
+        return Response({'error': 'No command provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+    output = run_command(server, command)
+
+    log = CommandLog.objects.create(
+        server=server,
+        command=command,
+        output=output
     )
 
-    logs = server.command_logs.order_by("-created_at")
-    
-    output = None
+    return Response({
+        'command': command,
+        'output': output,
+        'created_at': log.created_at,
+    })
 
-    if request.method == "POST":
 
-        command = request.POST["command"]
-
-        output = run_command(
-            server,
-            command
-        )
-
-        CommandLog.objects.create(
-            server=server,
-            command=command,
-            output=output
-        )
-
-    return render(
-        request,
-        "servers/server_detail.html",
-        {
-            "server": server,
-            "output": output,
-            "logs": logs
-        }
-    )
+# GET /api/servers/<id>/logs/  — get command history for a server
+@api_view(['GET'])
+def server_logs(request, server_id):
+    server = get_object_or_404(Server, id=server_id)
+    logs = server.command_logs.order_by('-created_at')
+    serializer = CommandLogSerializer(logs, many=True)
+    return Response(serializer.data)

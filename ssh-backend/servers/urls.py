@@ -1,9 +1,15 @@
 from django.urls import path
-from . import views
+from .views import auth_views, server_views
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
-    path('servers/', views.server_list, name='server_list'),
-    path('servers/<int:server_id>/', views.server_detail, name='server_detail'),
-    path('servers/<int:server_id>/run/', views.run_server_command, name='run_command'),
-    path('servers/<int:server_id>/logs/', views.server_logs, name='server_logs'),
+    path('servers/', server_views.server_list, name='server_list'),
+    path('servers/<int:server_id>/', server_views.server_detail, name='server_detail'),
+    path('servers/<int:server_id>/run/', server_views.run_server_command, name='run_command'),
+    path('servers/<int:server_id>/logs/', server_views.server_logs, name='server_logs'),
+    path('servers/<int:server_id>/update/', server_views.update_server, name='update_server'),
+
+    path('login/', auth_views.login, name='login'),
+    path("api/token/refresh/", TokenRefreshView.as_view()),
+
 ]

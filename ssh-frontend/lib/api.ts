@@ -72,3 +72,13 @@ export async function getServerLogs(serverId: number): Promise<CommandLog[]> {
   if (!res.ok) throw new Error("Failed to fetch logs");
   return res.json();
 }
+
+export async function updateServer(id: number, data: Partial<ServerFormData>): Promise<Server> {
+  const res = await fetch(`${BASE_URL}/servers/${id}/update/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update server");
+  return res.json();
+}

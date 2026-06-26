@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getServer, getServerLogs, runCommand, Server, CommandLog } from "../../../lib/api";
 
 export default function ServerDetailPage() {
   const { id } = useParams();
-  const router = useRouter();
   const serverId = parseInt(id as string);
 
   const [server, setServer] = useState<Server | null>(null);
@@ -64,7 +63,6 @@ export default function ServerDetailPage() {
           time: new Date(result.created_at).toLocaleTimeString(),
         },
       ]);
-      // Refresh logs
       const updatedLogs = await getServerLogs(serverId);
       setLogs(updatedLogs);
     } catch {
@@ -73,6 +71,30 @@ export default function ServerDetailPage() {
       setRunning(false);
       inputRef.current?.focus();
     }
+  }
+
+  function exportLogs() {
+    if (!logs.length || !server) return;
+
+    const escape = (val: string) => `"${val.replace(/"/g, '""')}"`;
+
+    const rows = [
+      ["Timestamp", "Command", "Output"],
+      ...logs.map((log) => [
+        escape(new Date(log.created_at).toLocaleString()),
+        escape(log.command),
+        escape(log.output),
+      ]),
+    ];
+
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${server.name}-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   if (error && !server) {
@@ -114,7 +136,7 @@ export default function ServerDetailPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-zinc-800">
+      <div className="flex items-center gap-1 mb-4 border-b border-zinc-800">
         {(["terminal", "history"] as const).map((tab) => (
           <button
             key={tab}
@@ -133,12 +155,24 @@ export default function ServerDetailPage() {
             )}
           </button>
         ))}
+
+        {/* Export button — only visible on history tab with logs */}
+        {activeTab === "history" && logs.length > 0 && (
+          <button
+            onClick={exportLogs}
+            className="ml-auto text-xs text-zinc-500 hover:text-emerald-400 border border-zinc-700 hover:border-emerald-500 px-3 py-1.5 rounded transition-colors flex items-center gap-1.5"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export CSV
+          </button>
+        )}
       </div>
 
       {/* Terminal */}
       {activeTab === "terminal" && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
-          {/* Terminal header */}
           <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-zinc-950">
             <div className="w-3 h-3 rounded-full bg-red-500/60" />
             <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
@@ -148,16 +182,13 @@ export default function ServerDetailPage() {
             </span>
           </div>
 
-          {/* Output area */}
           <div
             ref={terminalRef}
             className="terminal-output font-mono text-sm p-4 h-96 overflow-y-auto space-y-4"
             onClick={() => inputRef.current?.focus()}
           >
             {terminalOutput.length === 0 && (
-              <p className="text-zinc-600 text-xs">
-                Run a command below to get started.
-              </p>
+              <p className="text-zinc-600 text-xs">Run a command below to get started.</p>
             )}
             {terminalOutput.map((entry, i) => (
               <div key={i}>
@@ -179,7 +210,6 @@ export default function ServerDetailPage() {
             )}
           </div>
 
-          {/* Input */}
           <form
             onSubmit={handleRun}
             className="flex items-center gap-3 px-4 py-3 border-t border-zinc-800 bg-zinc-950"
@@ -215,10 +245,7 @@ export default function ServerDetailPage() {
             </div>
           ) : (
             logs.map((log) => (
-              <div
-                key={log.id}
-                className="bg-zinc-900 border border-zinc-800 rounded-lg p-4"
-              >
+              <div key={log.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-emerald-400 font-mono text-sm">$</span>
                   <span className="font-mono text-sm text-zinc-200">{log.command}</span>

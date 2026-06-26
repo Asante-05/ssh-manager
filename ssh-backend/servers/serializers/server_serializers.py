@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Server, CommandLog
+from ..models import Server, CommandLog
 
 
 class CommandLogSerializer(serializers.ModelSerializer):

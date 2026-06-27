@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   getServers,
@@ -32,6 +33,13 @@ export default function DashboardPage() {
   const [editForm, setEditForm] = useState<ServerFormData>(emptyForm);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [search, setSearch] = useState("");
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!localStorage.getItem("access_token")) {
+      router.push("/login");
+    }
+  }, []);
 
   useEffect(() => {
     fetchServers();
@@ -96,7 +104,7 @@ export default function DashboardPage() {
     try {
       const updated = await updateServer(editingServer.id, editForm);
       setServers((prev) =>
-        prev.map((s) => (s.id === updated.id ? updated : s))
+        prev.map((s) => (s.id === updated.id ? updated : s)),
       );
       setEditingServer(null);
     } catch {
@@ -129,7 +137,10 @@ export default function DashboardPage() {
           </p>
         </div>
         <button
-          onClick={() => { setShowForm((v) => !v); setEditingServer(null); }}
+          onClick={() => {
+            setShowForm((v) => !v);
+            setEditingServer(null);
+          }}
           className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-sm px-4 py-2 rounded-md transition-colors"
         >
           {showForm ? "Cancel" : "+ Add Server"}
@@ -139,8 +150,18 @@ export default function DashboardPage() {
       {/* Search */}
       {!loading && servers.length > 0 && (
         <div className="relative mb-6">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+            />
           </svg>
           <input
             type="text"
@@ -178,32 +199,89 @@ export default function DashboardPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Name <span className="text-emerald-500">*</span></label>
-              <input className={inputClass} type="text" placeholder="Production DB" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <label className="text-xs font-medium text-zinc-400">
+                Name <span className="text-emerald-500">*</span>
+              </label>
+              <input
+                className={inputClass}
+                type="text"
+                placeholder="Production DB"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+              />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Host <span className="text-emerald-500">*</span></label>
-              <input className={inputClass} type="text" placeholder="192.168.1.1 or example.com" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} required />
+              <label className="text-xs font-medium text-zinc-400">
+                Host <span className="text-emerald-500">*</span>
+              </label>
+              <input
+                className={inputClass}
+                type="text"
+                placeholder="192.168.1.1 or example.com"
+                value={form.host}
+                onChange={(e) => setForm({ ...form, host: e.target.value })}
+                required
+              />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Port <span className="text-emerald-500">*</span></label>
-              <input className={inputClass} type="number" value={form.port} onChange={(e) => setForm({ ...form, port: parseInt(e.target.value) })} required />
+              <label className="text-xs font-medium text-zinc-400">
+                Port <span className="text-emerald-500">*</span>
+              </label>
+              <input
+                className={inputClass}
+                type="number"
+                value={form.port}
+                onChange={(e) =>
+                  setForm({ ...form, port: parseInt(e.target.value) })
+                }
+                required
+              />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Username <span className="text-emerald-500">*</span></label>
-              <input className={inputClass} type="text" placeholder="ubuntu" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+              <label className="text-xs font-medium text-zinc-400">
+                Username <span className="text-emerald-500">*</span>
+              </label>
+              <input
+                className={inputClass}
+                type="text"
+                placeholder="ubuntu"
+                value={form.username}
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
+                required
+              />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Password</label>
-              <input className={inputClass} type="password" placeholder="Leave blank if using key" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+              <label className="text-xs font-medium text-zinc-400">
+                Password
+              </label>
+              <input
+                className={inputClass}
+                type="password"
+                placeholder="Leave blank if using key"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Key Path</label>
-              <input className={inputClass} type="text" placeholder="/Users/you/.ssh/id_rsa" value={form.key_path} onChange={(e) => setForm({ ...form, key_path: e.target.value })} />
+              <label className="text-xs font-medium text-zinc-400">
+                Key Path
+              </label>
+              <input
+                className={inputClass}
+                type="text"
+                placeholder="/Users/you/.ssh/id_rsa"
+                value={form.key_path}
+                onChange={(e) => setForm({ ...form, key_path: e.target.value })}
+              />
             </div>
           </div>
           <div className="mt-5 flex justify-end">
-            <button type="submit" disabled={submitting} className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-semibold text-sm px-5 py-2 rounded-md transition-colors">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-semibold text-sm px-5 py-2 rounded-md transition-colors"
+            >
               {submitting ? "Adding..." : "Add Server"}
             </button>
           </div>
@@ -218,42 +296,115 @@ export default function DashboardPage() {
               <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">
                 Edit Server
               </h2>
-              <button onClick={() => setEditingServer(null)} className="text-zinc-600 hover:text-zinc-300 transition-colors text-lg leading-none">
+              <button
+                onClick={() => setEditingServer(null)}
+                className="text-zinc-600 hover:text-zinc-300 transition-colors text-lg leading-none"
+              >
                 ✕
               </button>
             </div>
             <form onSubmit={handleEditSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-zinc-400">Name <span className="text-emerald-500">*</span></label>
-                  <input className={inputClass} type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+                  <label className="text-xs font-medium text-zinc-400">
+                    Name <span className="text-emerald-500">*</span>
+                  </label>
+                  <input
+                    className={inputClass}
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, name: e.target.value })
+                    }
+                    required
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-zinc-400">Host <span className="text-emerald-500">*</span></label>
-                  <input className={inputClass} type="text" value={editForm.host} onChange={(e) => setEditForm({ ...editForm, host: e.target.value })} required />
+                  <label className="text-xs font-medium text-zinc-400">
+                    Host <span className="text-emerald-500">*</span>
+                  </label>
+                  <input
+                    className={inputClass}
+                    type="text"
+                    value={editForm.host}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, host: e.target.value })
+                    }
+                    required
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-zinc-400">Port <span className="text-emerald-500">*</span></label>
-                  <input className={inputClass} type="number" value={editForm.port} onChange={(e) => setEditForm({ ...editForm, port: parseInt(e.target.value) })} required />
+                  <label className="text-xs font-medium text-zinc-400">
+                    Port <span className="text-emerald-500">*</span>
+                  </label>
+                  <input
+                    className={inputClass}
+                    type="number"
+                    value={editForm.port}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        port: parseInt(e.target.value),
+                      })
+                    }
+                    required
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-zinc-400">Username <span className="text-emerald-500">*</span></label>
-                  <input className={inputClass} type="text" value={editForm.username} onChange={(e) => setEditForm({ ...editForm, username: e.target.value })} required />
+                  <label className="text-xs font-medium text-zinc-400">
+                    Username <span className="text-emerald-500">*</span>
+                  </label>
+                  <input
+                    className={inputClass}
+                    type="text"
+                    value={editForm.username}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, username: e.target.value })
+                    }
+                    required
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-zinc-400">Password</label>
-                  <input className={inputClass} type="password" placeholder="Leave blank to keep existing" value={editForm.password} onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} />
+                  <label className="text-xs font-medium text-zinc-400">
+                    Password
+                  </label>
+                  <input
+                    className={inputClass}
+                    type="password"
+                    placeholder="Leave blank to keep existing"
+                    value={editForm.password}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, password: e.target.value })
+                    }
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-zinc-400">Key Path</label>
-                  <input className={inputClass} type="text" value={editForm.key_path} onChange={(e) => setEditForm({ ...editForm, key_path: e.target.value })} />
+                  <label className="text-xs font-medium text-zinc-400">
+                    Key Path
+                  </label>
+                  <input
+                    className={inputClass}
+                    type="text"
+                    value={editForm.key_path}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, key_path: e.target.value })
+                    }
+                  />
                 </div>
               </div>
               <div className="mt-5 flex justify-end gap-2">
-                <button type="button" onClick={() => setEditingServer(null)} className="text-sm text-zinc-500 hover:text-zinc-300 px-4 py-2 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setEditingServer(null)}
+                  className="text-sm text-zinc-500 hover:text-zinc-300 px-4 py-2 transition-colors"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={editSubmitting} className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-semibold text-sm px-5 py-2 rounded-md transition-colors">
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-semibold text-sm px-5 py-2 rounded-md transition-colors"
+                >
                   {editSubmitting ? "Saving..." : "Save Changes"}
                 </button>
               </div>
@@ -268,12 +419,19 @@ export default function DashboardPage() {
       ) : servers.length === 0 ? (
         <div className="text-center py-20 border border-dashed border-zinc-800 rounded-lg">
           <p className="text-zinc-500 text-sm">No servers yet.</p>
-          <p className="text-zinc-600 text-xs mt-1">Add one above to get started.</p>
+          <p className="text-zinc-600 text-xs mt-1">
+            Add one above to get started.
+          </p>
         </div>
       ) : filteredServers.length === 0 ? (
         <div className="text-center py-20 border border-dashed border-zinc-800 rounded-lg">
-          <p className="text-zinc-500 text-sm">No servers match &quot;{search}&quot;</p>
-          <button onClick={() => setSearch("")} className="text-zinc-600 hover:text-zinc-400 text-xs mt-2 transition-colors">
+          <p className="text-zinc-500 text-sm">
+            No servers match &quot;{search}&quot;
+          </p>
+          <button
+            onClick={() => setSearch("")}
+            className="text-zinc-600 hover:text-zinc-400 text-xs mt-2 transition-colors"
+          >
             Clear search
           </button>
         </div>

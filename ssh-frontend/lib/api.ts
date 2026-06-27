@@ -23,6 +23,7 @@ export interface ServerFormData {
   username: string;
   password?: string;
   key_path?: string;
+  private_key?: string;
 }
 
 // Auth helpers
@@ -138,5 +139,11 @@ export async function runCommand(
 export async function getServerLogs(serverId: number): Promise<CommandLog[]> {
   const res = await apiFetch(`${BASE_URL}/servers/${serverId}/logs/`);
   if (!res.ok) throw new Error("Failed to fetch logs");
+  return res.json();
+}
+
+export async function pingServer(id: number): Promise<{ online: boolean; host: string }> {
+  const res = await apiFetch(`${BASE_URL}/servers/${id}/ping/`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to ping server");
   return res.json();
 }

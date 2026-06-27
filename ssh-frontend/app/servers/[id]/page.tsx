@@ -1,28 +1,43 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getServer, getServerLogs, runCommand, Server, CommandLog } from "../../../lib/api";
+import { getServer, getServerLogs, Server, CommandLog } from "../../../lib/api";
+
+interface TerminalEntry {
+  command: string;
+  output: string;
+  time: string;
+  error?: boolean;
+}
 
 export default function ServerDetailPage() {
   const { id } = useParams();
+  const router = useRouter();
   const serverId = parseInt(id as string);
 
   const [server, setServer] = useState<Server | null>(null);
   const [logs, setLogs] = useState<CommandLog[]>([]);
   const [command, setCommand] = useState("");
-  const [terminalOutput, setTerminalOutput] = useState<
-    { command: string; output: string; time: string }[]
-  >([]);
+  const [terminalOutput, setTerminalOutput] = useState<TerminalEntry[]>([]);
+  const [currentOutput, setCurrentOutput] = useState<string>("");
+  const [currentCommand, setCurrentCommand] = useState<string>("");
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"terminal" | "history">("terminal");
+  const [wsStatus, setWsStatus] = useState<"connecting" | "connected" | "disconnected">("disconnected");
 
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
+    if (!localStorage.getItem("access_token")) {
+      router.push("/login");
+      return;
+    }
+
     async function load() {
       try {
         const [srv, serverLogs] = await Promise.all([
@@ -36,48 +51,96 @@ export default function ServerDetailPage() {
       }
     }
     load();
+
+    // Connect WebSocket
+    connectWebSocket();
+
+    return () => {
+      wsRef.current?.close();
+    };
   }, [serverId]);
+
+  function connectWebSocket() {
+    const token = localStorage.getItem("access_token");
+    const ws = new WebSocket(
+      `ws://localhost:8000/ws/servers/${serverId}/terminal/?token=${token}`
+    );
+
+    setWsStatus("connecting");
+
+    ws.onopen = () => setWsStatus("connected");
+    ws.onclose = () => setWsStatus("disconnected");
+    ws.onerror = () => setWsStatus("disconnected");
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+
+      if (msg.type === "start") {
+        setCurrentCommand(msg.command);
+        setCurrentOutput("");
+        setRunning(true);
+      } else if (msg.type === "output") {
+        setCurrentOutput(msg.data);
+      } else if (msg.type === "done") {
+        setTerminalOutput((prev) => [
+          ...prev,
+          {
+            command: currentCommandRef.current,
+            output: currentOutputRef.current,
+            time: new Date().toLocaleTimeString(),
+          },
+        ]);
+        setCurrentCommand("");
+        setCurrentOutput("");
+        setRunning(false);
+        // Refresh logs
+        getServerLogs(serverId).then(setLogs).catch(() => {});
+        inputRef.current?.focus();
+      } else if (msg.type === "error") {
+        setTerminalOutput((prev) => [
+          ...prev,
+          {
+            command: currentCommandRef.current,
+            output: msg.data,
+            time: new Date().toLocaleTimeString(),
+            error: true,
+          },
+        ]);
+        setRunning(false);
+        inputRef.current?.focus();
+      }
+    };
+
+    wsRef.current = ws;
+  }
+
+  // Refs to capture latest state inside ws.onmessage closure
+  const currentCommandRef = useRef("");
+  const currentOutputRef = useRef("");
+  useEffect(() => { currentCommandRef.current = currentCommand; }, [currentCommand]);
+  useEffect(() => { currentOutputRef.current = currentOutput; }, [currentOutput]);
 
   useEffect(() => {
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
-  }, [terminalOutput]);
+  }, [terminalOutput, currentOutput]);
 
-  async function handleRun(e: React.FormEvent) {
+  function handleRun(e: React.FormEvent) {
     e.preventDefault();
     if (!command.trim() || running) return;
-
-    const cmd = command.trim();
-    setCommand("");
-    setRunning(true);
-    setError(null);
-
-    try {
-      const result = await runCommand(serverId, cmd);
-      setTerminalOutput((prev) => [
-        ...prev,
-        {
-          command: cmd,
-          output: result.output,
-          time: new Date(result.created_at).toLocaleTimeString(),
-        },
-      ]);
-      const updatedLogs = await getServerLogs(serverId);
-      setLogs(updatedLogs);
-    } catch {
-      setError("Failed to run command. Check your SSH connection.");
-    } finally {
-      setRunning(false);
-      inputRef.current?.focus();
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      setError("WebSocket not connected. Try refreshing.");
+      return;
     }
+
+    wsRef.current.send(JSON.stringify({ command: command.trim() }));
+    setCommand("");
   }
 
   function exportLogs() {
     if (!logs.length || !server) return;
-
     const escape = (val: string) => `"${val.replace(/"/g, '""')}"`;
-
     const rows = [
       ["Timestamp", "Command", "Output"],
       ...logs.map((log) => [
@@ -86,7 +149,6 @@ export default function ServerDetailPage() {
         escape(log.output),
       ]),
     ];
-
     const csv = rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -112,6 +174,12 @@ export default function ServerDetailPage() {
     return <div className="text-zinc-500 text-sm">Loading...</div>;
   }
 
+  const wsStatusColor = {
+    connected: "bg-emerald-400",
+    connecting: "bg-yellow-400 animate-pulse",
+    disconnected: "bg-red-400",
+  }[wsStatus];
+
   return (
     <div>
       {/* Header */}
@@ -120,8 +188,9 @@ export default function ServerDetailPage() {
           ← Servers
         </Link>
         <div className="flex items-center gap-3 mt-3">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_2px_rgba(52,211,153,0.4)]" />
+          <div className={`w-2 h-2 rounded-full ${wsStatusColor}`} />
           <h1 className="text-xl font-semibold text-zinc-100">{server.name}</h1>
+          <span className="text-xs text-zinc-600">{wsStatus}</span>
         </div>
         <p className="font-mono text-xs text-zinc-500 mt-1 ml-5">
           {server.username}@{server.host}:{server.port}
@@ -156,7 +225,6 @@ export default function ServerDetailPage() {
           </button>
         ))}
 
-        {/* Export button — only visible on history tab with logs */}
         {activeTab === "history" && logs.length > 0 && (
           <button
             onClick={exportLogs}
@@ -180,6 +248,14 @@ export default function ServerDetailPage() {
             <span className="font-mono text-xs text-zinc-600 ml-2">
               {server.username}@{server.host}
             </span>
+            {wsStatus === "disconnected" && (
+              <button
+                onClick={connectWebSocket}
+                className="ml-auto text-xs text-zinc-500 hover:text-emerald-400 transition-colors"
+              >
+                Reconnect
+              </button>
+            )}
           </div>
 
           <div
@@ -187,7 +263,7 @@ export default function ServerDetailPage() {
             className="terminal-output font-mono text-sm p-4 h-96 overflow-y-auto space-y-4"
             onClick={() => inputRef.current?.focus()}
           >
-            {terminalOutput.length === 0 && (
+            {terminalOutput.length === 0 && !running && (
               <p className="text-zinc-600 text-xs">Run a command below to get started.</p>
             )}
             {terminalOutput.map((entry, i) => (
@@ -197,15 +273,24 @@ export default function ServerDetailPage() {
                   <span className="text-zinc-300">{entry.command}</span>
                   <span className="text-zinc-700 text-xs ml-auto">{entry.time}</span>
                 </div>
-                <pre className="text-zinc-400 text-xs mt-1 whitespace-pre-wrap leading-relaxed pl-4 border-l border-zinc-800">
+                <pre className={`text-xs mt-1 whitespace-pre-wrap leading-relaxed pl-4 border-l ${entry.error ? "text-red-400 border-red-800" : "text-zinc-400 border-zinc-800"}`}>
                   {entry.output}
                 </pre>
               </div>
             ))}
+            {/* Live output while running */}
             {running && (
-              <div className="flex items-center gap-2 text-zinc-500 text-xs">
-                <span className="text-emerald-400">$</span>
-                <span className="animate-pulse">Running...</span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-emerald-400">$</span>
+                  <span className="text-zinc-300">{currentCommand}</span>
+                  <span className="text-zinc-700 text-xs ml-auto animate-pulse">running...</span>
+                </div>
+                {currentOutput && (
+                  <pre className="text-zinc-400 text-xs mt-1 whitespace-pre-wrap leading-relaxed pl-4 border-l border-zinc-800">
+                    {currentOutput}
+                  </pre>
+                )}
               </div>
             )}
           </div>
@@ -220,14 +305,14 @@ export default function ServerDetailPage() {
               type="text"
               value={command}
               onChange={(e) => setCommand(e.target.value)}
-              placeholder="Enter command..."
-              disabled={running}
+              placeholder={wsStatus === "connected" ? "Enter command..." : "Waiting for connection..."}
+              disabled={running || wsStatus !== "connected"}
               autoFocus
               className="flex-1 bg-transparent font-mono text-sm text-zinc-100 placeholder:text-zinc-700 focus:outline-none disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={running || !command.trim()}
+              disabled={running || !command.trim() || wsStatus !== "connected"}
               className="text-xs bg-emerald-500 hover:bg-emerald-400 disabled:opacity-30 text-zinc-950 font-semibold px-3 py-1.5 rounded transition-colors"
             >
               Run

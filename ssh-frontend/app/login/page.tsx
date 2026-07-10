@@ -59,6 +59,7 @@ export default function LoginPage() {
                 type="text"
                 placeholder="admin"
                 value={username}
+                // value={"asante"}
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 autoFocus
@@ -71,6 +72,7 @@ export default function LoginPage() {
                 type="password"
                 placeholder="••••••••"
                 value={password}
+                // value={"1234"}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />

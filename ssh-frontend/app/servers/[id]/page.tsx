@@ -28,6 +28,11 @@ export default function ServerDetailPage() {
   const [activeTab, setActiveTab] = useState<"terminal" | "history">("terminal");
   const [wsStatus, setWsStatus] = useState<"connecting" | "connected" | "disconnected">("disconnected");
 
+  // Command history for arrow key navigation
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const savedCommandRef = useRef<string>("");  // saves what user was typing before navigating history
+
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -51,30 +56,22 @@ export default function ServerDetailPage() {
       }
     }
     load();
-
-    // Connect WebSocket
     connectWebSocket();
 
-    return () => {
-      wsRef.current?.close();
-    };
+    return () => { wsRef.current?.close(); };
   }, [serverId]);
 
   function connectWebSocket() {
     const token = localStorage.getItem("access_token");
-    const ws = new WebSocket(
-      `ws://localhost:8000/ws/servers/${serverId}/terminal/?token=${token}`
-    );
+    const ws = new WebSocket(`ws://localhost:8000/ws/servers/${serverId}/terminal/?token=${token}`);
 
     setWsStatus("connecting");
-
     ws.onopen = () => setWsStatus("connected");
     ws.onclose = () => setWsStatus("disconnected");
     ws.onerror = () => setWsStatus("disconnected");
 
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
-
       if (msg.type === "start") {
         setCurrentCommand(msg.command);
         setCurrentOutput("");
@@ -93,7 +90,6 @@ export default function ServerDetailPage() {
         setCurrentCommand("");
         setCurrentOutput("");
         setRunning(false);
-        // Refresh logs
         getServerLogs(serverId).then(setLogs).catch(() => {});
         inputRef.current?.focus();
       } else if (msg.type === "error") {
@@ -114,7 +110,6 @@ export default function ServerDetailPage() {
     wsRef.current = ws;
   }
 
-  // Refs to capture latest state inside ws.onmessage closure
   const currentCommandRef = useRef("");
   const currentOutputRef = useRef("");
   useEffect(() => { currentCommandRef.current = currentCommand; }, [currentCommand]);
@@ -134,8 +129,49 @@ export default function ServerDetailPage() {
       return;
     }
 
-    wsRef.current.send(JSON.stringify({ command: command.trim() }));
+    const cmd = command.trim();
+
+    // Add to history (avoid duplicates at the top)
+    setCommandHistory((prev) => {
+      if (prev[0] === cmd) return prev;
+      return [cmd, ...prev].slice(0, 100); // keep last 100 commands
+    });
+    setHistoryIndex(-1);
+    savedCommandRef.current = "";
+
+    wsRef.current.send(JSON.stringify({ command: cmd }));
     setCommand("");
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (commandHistory.length === 0) return;
+
+      // Save current input before navigating
+      if (historyIndex === -1) {
+        savedCommandRef.current = command;
+      }
+
+      const newIndex = Math.min(historyIndex + 1, commandHistory.length - 1);
+      setHistoryIndex(newIndex);
+      setCommand(commandHistory[newIndex]);
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (historyIndex === -1) return;
+
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+
+      if (newIndex === -1) {
+        // Restore what user was typing before navigating
+        setCommand(savedCommandRef.current);
+      } else {
+        setCommand(commandHistory[newIndex]);
+      }
+    }
   }
 
   function exportLogs() {
@@ -163,16 +199,12 @@ export default function ServerDetailPage() {
     return (
       <div className="text-center py-20">
         <p className="text-red-400 text-sm">{error}</p>
-        <Link href="/" className="text-zinc-500 text-xs mt-3 inline-block hover:text-zinc-300">
-          ← Back to servers
-        </Link>
+        <Link href="/" className="text-zinc-500 text-xs mt-3 inline-block hover:text-zinc-300">← Back to servers</Link>
       </div>
     );
   }
 
-  if (!server) {
-    return <div className="text-zinc-500 text-sm">Loading...</div>;
-  }
+  if (!server) return <div className="text-zinc-500 text-sm">Loading...</div>;
 
   const wsStatusColor = {
     connected: "bg-emerald-400",
@@ -184,24 +216,18 @@ export default function ServerDetailPage() {
     <div>
       {/* Header */}
       <div className="mb-8">
-        <Link href="/" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
-          ← Servers
-        </Link>
+        <Link href="/" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">← Servers</Link>
         <div className="flex items-center gap-3 mt-3">
           <div className={`w-2 h-2 rounded-full ${wsStatusColor}`} />
           <h1 className="text-xl font-semibold text-zinc-100">{server.name}</h1>
           <span className="text-xs text-zinc-600">{wsStatus}</span>
         </div>
-        <p className="font-mono text-xs text-zinc-500 mt-1 ml-5">
-          {server.username}@{server.host}:{server.port}
-        </p>
+        <p className="font-mono text-xs text-zinc-500 mt-1 ml-5">{server.username}@{server.host}:{server.port}</p>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="mb-4 bg-red-950 border border-red-800 text-red-300 text-sm px-4 py-3 rounded-md">
-          {error}
-        </div>
+        <div className="mb-4 bg-red-950 border border-red-800 text-red-300 text-sm px-4 py-3 rounded-md">{error}</div>
       )}
 
       {/* Tabs */}
@@ -211,16 +237,12 @@ export default function ServerDetailPage() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`text-sm px-4 py-2 font-medium capitalize transition-colors border-b-2 -mb-px ${
-              activeTab === tab
-                ? "border-emerald-500 text-emerald-400"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
+              activeTab === tab ? "border-emerald-500 text-emerald-400" : "border-transparent text-zinc-500 hover:text-zinc-300"
             }`}
           >
             {tab}
             {tab === "history" && logs.length > 0 && (
-              <span className="ml-2 text-xs bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded">
-                {logs.length}
-              </span>
+              <span className="ml-2 text-xs bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded">{logs.length}</span>
             )}
           </button>
         ))}
@@ -245,16 +267,12 @@ export default function ServerDetailPage() {
             <div className="w-3 h-3 rounded-full bg-red-500/60" />
             <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
             <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
-            <span className="font-mono text-xs text-zinc-600 ml-2">
-              {server.username}@{server.host}
-            </span>
+            <span className="font-mono text-xs text-zinc-600 ml-2">{server.username}@{server.host}</span>
+            {commandHistory.length > 0 && (
+              <span className="ml-auto text-xs text-zinc-700">↑↓ history ({commandHistory.length})</span>
+            )}
             {wsStatus === "disconnected" && (
-              <button
-                onClick={connectWebSocket}
-                className="ml-auto text-xs text-zinc-500 hover:text-emerald-400 transition-colors"
-              >
-                Reconnect
-              </button>
+              <button onClick={connectWebSocket} className="ml-auto text-xs text-zinc-500 hover:text-emerald-400 transition-colors">Reconnect</button>
             )}
           </div>
 
@@ -278,7 +296,6 @@ export default function ServerDetailPage() {
                 </pre>
               </div>
             ))}
-            {/* Live output while running */}
             {running && (
               <div>
                 <div className="flex items-center gap-2">
@@ -287,24 +304,27 @@ export default function ServerDetailPage() {
                   <span className="text-zinc-700 text-xs ml-auto animate-pulse">running...</span>
                 </div>
                 {currentOutput && (
-                  <pre className="text-zinc-400 text-xs mt-1 whitespace-pre-wrap leading-relaxed pl-4 border-l border-zinc-800">
-                    {currentOutput}
-                  </pre>
+                  <pre className="text-zinc-400 text-xs mt-1 whitespace-pre-wrap leading-relaxed pl-4 border-l border-zinc-800">{currentOutput}</pre>
                 )}
               </div>
             )}
           </div>
 
-          <form
-            onSubmit={handleRun}
-            className="flex items-center gap-3 px-4 py-3 border-t border-zinc-800 bg-zinc-950"
-          >
+          <form onSubmit={handleRun} className="flex items-center gap-3 px-4 py-3 border-t border-zinc-800 bg-zinc-950">
             <span className="text-emerald-400 font-mono text-sm">$</span>
             <input
               ref={inputRef}
               type="text"
               value={command}
-              onChange={(e) => setCommand(e.target.value)}
+              onChange={(e) => {
+                setCommand(e.target.value);
+                // If user types while in history, reset index
+                if (historyIndex !== -1) {
+                  setHistoryIndex(-1);
+                  savedCommandRef.current = "";
+                }
+              }}
+              onKeyDown={handleKeyDown}
               placeholder={wsStatus === "connected" ? "Enter command..." : "Waiting for connection..."}
               disabled={running || wsStatus !== "connected"}
               autoFocus
@@ -334,13 +354,9 @@ export default function ServerDetailPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-emerald-400 font-mono text-sm">$</span>
                   <span className="font-mono text-sm text-zinc-200">{log.command}</span>
-                  <span className="ml-auto text-xs text-zinc-600">
-                    {new Date(log.created_at).toLocaleString()}
-                  </span>
+                  <span className="ml-auto text-xs text-zinc-600">{new Date(log.created_at).toLocaleString()}</span>
                 </div>
-                <pre className="font-mono text-xs text-zinc-500 whitespace-pre-wrap leading-relaxed pl-4 border-l border-zinc-800">
-                  {log.output}
-                </pre>
+                <pre className="font-mono text-xs text-zinc-500 whitespace-pre-wrap leading-relaxed pl-4 border-l border-zinc-800">{log.output}</pre>
               </div>
             ))
           )}

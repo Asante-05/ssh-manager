@@ -1,1 +1,52 @@
+# ======================
+# Python / Django
+# ======================
+
+ssh-backend/venv/
+ssh-backend/env/
+ssh-backend/.env
+
+ssh-backend/__pycache__/
+ssh-backend/**/*.py[cod]
+ssh-backend/*.log
+
+ssh-backend/db.sqlite3
+
+ssh-backend/media/
+ssh-backend/staticfiles/
+
+
+# ======================
+# Node / Next.js
+# ======================
+
+ssh-frontend/node_modules/
+ssh-frontend/.next/
+ssh-frontend/out/
+
+ssh-frontend/.env*
+ssh-frontend/npm-debug.log*
+ssh-frontend/yarn-debug.log*
+ssh-frontend/yarn-error.log*
+
+
+# ======================
+# IDE
+# ======================
+
+.vscode/
+.idea/
+
+
+# ======================
+# macOS
+# ======================
+
 .DS_Store
+
+
+# ======================
+# Misc
+# ======================
+
+*.swp

@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -101,3 +102,10 @@ CHANNEL_LAYERS = {
 }
 
 ENCRYPTION_KEY = "kshnwCIBCyMj8SvBYEuH3QSCP6qLsOnAL7PT-kCU_14="
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,  
+    "BLACKLIST_AFTER_ROTATION": False,
+}

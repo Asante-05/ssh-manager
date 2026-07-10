@@ -7,6 +7,7 @@ export interface Server {
   port: number;
   username: string;
   key_path?: string;
+  group?: string;
 }
 
 export interface CommandLog {
@@ -24,11 +25,16 @@ export interface ServerFormData {
   password?: string;
   key_path?: string;
   private_key?: string;
+  group?: string;
 }
 
 // Auth helpers
 export function getToken(): string | null {
   return localStorage.getItem("access_token");
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem("refresh_token");
 }
 
 export function setTokens(access: string, refresh: string) {
@@ -45,24 +51,61 @@ export function isAuthenticated(): boolean {
   return !!getToken();
 }
 
-function authHeaders(): HeadersInit {
-  const token = getToken();
+function authHeaders(token?: string): HeadersInit {
+  const t = token || getToken();
   return {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(t ? { Authorization: `Bearer ${t}` } : {}),
   };
 }
 
-// Auto-handle 401s by redirecting to login
+// Attempt to refresh the access token using the refresh token
+async function refreshAccessToken(): Promise<string | null> {
+  const refresh = getRefreshToken();
+  if (!refresh) return null;
+
+  try {
+    const res = await fetch(`${BASE_URL}/auth/refresh/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh }),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    // ROTATE_REFRESH_TOKENS=True means we get a new refresh token too
+    setTokens(data.access, data.refresh || refresh);
+    return data.access;
+  } catch {
+    return null;
+  }
+}
+
+// apiFetch: auto-refresh on 401 and retry once
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const res = await fetch(url, {
+  let res = await fetch(url, {
     ...options,
     headers: authHeaders(),
   });
 
   if (res.status === 401) {
-    clearTokens();
-    window.location.href = "/login";
+    // Try to refresh
+    const newToken = await refreshAccessToken();
+
+    if (newToken) {
+      // Retry the original request with the new token
+      res = await fetch(url, {
+        ...options,
+        headers: authHeaders(newToken),
+      });
+    }
+
+    // If still 401 after refresh, log out
+    if (res.status === 401) {
+      clearTokens();
+      window.location.href = "/login";
+    }
   }
 
   return res;

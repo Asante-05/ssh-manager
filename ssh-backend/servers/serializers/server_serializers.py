@@ -10,11 +10,12 @@ class CommandLogSerializer(serializers.ModelSerializer):
 class ServerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Server
-        fields = ['id', 'name', 'host', 'port', 'username', 'password', 'key_path', 'private_key']
+        fields = ['id', 'name', 'host', 'port', 'username', 'password', 'key_path', 'private_key', 'group']
         extra_kwargs = {
             'password': {'write_only': True, 'required': False},
             'private_key': {'write_only': True, 'required': False},
             'key_path': {'required': False},
+            'group': {'required': False},
         }
 
     def create(self, validated_data):

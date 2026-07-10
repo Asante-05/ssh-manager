@@ -2,6 +2,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+import subprocess
+
 
 
 from rest_framework.permissions import IsAuthenticated
@@ -90,3 +92,15 @@ def update_server(request, server_id):
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['POST'])
+def ping_server(request, server_id):
+    server = get_object_or_404(Server, id=server_id)
+    result = subprocess.run(
+        ["ping", "-c", "1", "-W", "2", server.host],
+        capture_output=True
+    )
+    online = result.returncode == 0
+    return Response({"online": online, "host": server.host})

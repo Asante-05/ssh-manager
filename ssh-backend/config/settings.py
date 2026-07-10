@@ -9,6 +9,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
+    'daphne', 
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -20,6 +21,8 @@ INSTALLED_APPS = [
     'corsheaders',
 
     'servers',
+    'channels',
+
 ]
 
 MIDDLEWARE = [
@@ -90,3 +93,11 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.AllowAny",
     ),
 }
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
+ENCRYPTION_KEY = "kshnwCIBCyMj8SvBYEuH3QSCP6qLsOnAL7PT-kCU_14="

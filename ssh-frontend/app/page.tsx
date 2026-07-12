@@ -41,7 +41,6 @@ function groupColor(group: string, groups: string[]) {
   return GROUP_COLORS[idx];
 }
 
-// Custom group select component
 function GroupSelect({
   value,
   onChange,
@@ -67,10 +66,7 @@ function GroupSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filtered = groups.filter((g) =>
-    g.toLowerCase().includes(input.toLowerCase())
-  );
-
+  const filtered = groups.filter((g) => g.toLowerCase().includes(input.toLowerCase()));
   const showCreateOption = input.trim() && !groups.includes(input.trim());
 
   function select(val: string) {
@@ -104,37 +100,21 @@ function GroupSelect({
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {input && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="text-zinc-500 hover:text-zinc-300 transition-colors text-xs px-1"
-            >
-              ✕
-            </button>
+            <button type="button" onClick={handleClear} className="text-zinc-500 hover:text-zinc-300 transition-colors text-xs px-1">✕</button>
           )}
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
+          <button type="button" onClick={() => setOpen((v) => !v)} className="text-zinc-500 hover:text-zinc-300 transition-colors">
             <svg className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
         </div>
       </div>
-
       {open && (filtered.length > 0 || showCreateOption) && (
         <div className="absolute z-50 mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-md shadow-lg overflow-hidden">
           {filtered.length > 0 && (
             <div className="py-1">
               {filtered.map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => select(g)}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 ${input === g ? "bg-zinc-700 text-zinc-100" : "text-zinc-300 hover:bg-zinc-700"}`}
-                >
+                <button key={g} type="button" onClick={() => select(g)} className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 ${input === g ? "bg-zinc-700 text-zinc-100" : "text-zinc-300 hover:bg-zinc-700"}`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   {g}
                 </button>
@@ -144,11 +124,7 @@ function GroupSelect({
           {showCreateOption && (
             <>
               {filtered.length > 0 && <div className="border-t border-zinc-700" />}
-              <button
-                type="button"
-                onClick={() => select(input.trim())}
-                className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-zinc-700 transition-colors flex items-center gap-2"
-              >
+              <button type="button" onClick={() => select(input.trim())} className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-zinc-700 transition-colors flex items-center gap-2">
                 <span className="text-emerald-500">+</span>
                 Create &quot;{input.trim()}&quot;
               </button>
@@ -163,7 +139,7 @@ function GroupSelect({
 export default function DashboardPage() {
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
   const [form, setForm] = useState<ServerFormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -195,6 +171,15 @@ export default function DashboardPage() {
     if (livePingRef.current) livePingRef.current.scrollTop = livePingRef.current.scrollHeight;
   }, [livePingLines]);
 
+  // Close drawer on Escape key
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowDrawer(false);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   async function fetchServers() {
     try {
       const data = await getServers();
@@ -214,7 +199,7 @@ export default function DashboardPage() {
       const newServer = await createServer(form);
       setServers((prev) => [...prev, newServer]);
       setForm(emptyForm);
-      setShowForm(false);
+      setShowDrawer(false);
     } catch {
       setError("Failed to add server. Check your inputs and try again.");
     } finally {
@@ -360,10 +345,10 @@ export default function DashboardPage() {
             <button onClick={() => setPingMode("live")} className={`px-3 py-1.5 rounded transition-colors ${pingMode === "live" ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}>Live ping</button>
           </div>
           <button
-            onClick={() => { setShowForm((v) => !v); setEditingServer(null); }}
+            onClick={() => setShowDrawer(true)}
             className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-sm px-4 py-2 rounded-md transition-colors"
           >
-            {showForm ? "Cancel" : "+ Add Server"}
+            + Add Server
           </button>
         </div>
       </div>
@@ -371,18 +356,9 @@ export default function DashboardPage() {
       {/* Group filters */}
       {allGroups.length > 0 && (
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <button
-            onClick={() => setSelectedGroup(null)}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${selectedGroup === null ? "bg-zinc-700 border-zinc-600 text-zinc-100" : "border-zinc-700 text-zinc-500 hover:text-zinc-300"}`}
-          >
-            All
-          </button>
+          <button onClick={() => setSelectedGroup(null)} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${selectedGroup === null ? "bg-zinc-700 border-zinc-600 text-zinc-100" : "border-zinc-700 text-zinc-500 hover:text-zinc-300"}`}>All</button>
           {allGroups.map((group) => (
-            <button
-              key={group}
-              onClick={() => setSelectedGroup(selectedGroup === group ? null : group)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${selectedGroup === group ? groupColor(group, allGroups) : "border-zinc-700 text-zinc-500 hover:text-zinc-300"}`}
-            >
+            <button key={group} onClick={() => setSelectedGroup(selectedGroup === group ? null : group)} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${selectedGroup === group ? groupColor(group, allGroups) : "border-zinc-700 text-zinc-500 hover:text-zinc-300"}`}>
               {group}
             </button>
           ))}
@@ -403,48 +379,129 @@ export default function DashboardPage() {
       {/* Error */}
       {error && <div className="mb-6 bg-red-950 border border-red-800 text-red-300 text-sm px-4 py-3 rounded-md">{error}</div>}
 
-      {/* Add Server Form */}
-      {showForm && (
-        <form onSubmit={handleSubmit} className="mb-8 bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-5">New Server</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Name <span className="text-emerald-500">*</span></label>
-              <input className={inputClass} type="text" placeholder="Production DB" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+      {/* Server List */}
+      {loading ? (
+        <div className="text-zinc-500 text-sm">Loading servers...</div>
+      ) : servers.length === 0 ? (
+        <div className="text-center py-20 border border-dashed border-zinc-800 rounded-lg">
+          <p className="text-zinc-500 text-sm">No servers yet.</p>
+          <p className="text-zinc-600 text-xs mt-1">Click &quot;+ Add Server&quot; to get started.</p>
+        </div>
+      ) : filteredServers.length === 0 ? (
+        <div className="text-center py-20 border border-dashed border-zinc-800 rounded-lg">
+          <p className="text-zinc-500 text-sm">No servers match your filters.</p>
+          <button onClick={() => { setSearch(""); setSelectedGroup(null); }} className="text-zinc-600 hover:text-zinc-400 text-xs mt-2 transition-colors">Clear filters</button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredServers.map((server) => (
+            <div key={server.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-zinc-700 transition-colors">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-zinc-100">{server.name}</h3>
+                    {server.group && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${groupColor(server.group, allGroups)}`}>{server.group}</span>
+                    )}
+                  </div>
+                  <p className="font-mono text-xs text-zinc-500 mt-0.5">{server.username}@{server.host}:{server.port}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link href={`/servers/${server.id}`} className="text-xs bg-zinc-800 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-300 font-semibold px-3 py-1.5 rounded transition-colors">Connect</Link>
+                  <button onClick={() => handlePingClick(server)} disabled={pingStatuses[server.id] === "pinging"} className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors px-2 py-1.5 disabled:opacity-50">
+                    {pingStatuses[server.id] === "pinging" ? "..." : "Ping"}
+                  </button>
+                  <button onClick={() => handleEditClick(server)} className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors px-2 py-1.5">Edit</button>
+                  <button onClick={() => handleDelete(server.id)} disabled={deletingId === server.id} className="text-xs text-zinc-600 hover:text-red-400 transition-colors px-2 py-1.5 disabled:opacity-50">
+                    {deletingId === server.id ? "..." : "Delete"}
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
+                  <span className="text-xs text-zinc-600">{server.key_path ? "SSH Key" : "Password auth"}</span>
+                </div>
+                <PingIndicator serverId={server.id} />
+              </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Host <span className="text-emerald-500">*</span></label>
-              <input className={inputClass} type="text" placeholder="192.168.1.1 or example.com" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Port <span className="text-emerald-500">*</span></label>
-              <input className={inputClass} type="number" value={form.port} onChange={(e) => setForm({ ...form, port: parseInt(e.target.value) })} required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Username <span className="text-emerald-500">*</span></label>
-              <input className={inputClass} type="text" placeholder="ubuntu" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Password</label>
-              <input className={inputClass} type="password" placeholder="Leave blank if using key" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-400">Key Path</label>
-              <input className={inputClass} type="text" placeholder="/Users/you/.ssh/id_rsa" value={form.key_path} onChange={(e) => setForm({ ...form, key_path: e.target.value })} />
-            </div>
-            <div className="flex flex-col gap-1.5 col-span-2">
-              <label className="text-xs font-medium text-zinc-400">Group</label>
-              <GroupSelect value={form.group || ""} onChange={(val) => setForm({ ...form, group: val })} groups={allGroups} />
-              <p className="text-xs text-zinc-600">Select an existing group or type to create a new one.</p>
-            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add Server Drawer */}
+      <>
+        {/* Backdrop */}
+        <div
+          className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${showDrawer ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          onClick={() => setShowDrawer(false)}
+        />
+        {/* Drawer */}
+        <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-zinc-900 border-l border-zinc-800 z-50 flex flex-col shadow-2xl transition-transform duration-300 ${showDrawer ? "translate-x-0" : "translate-x-full"}`}>
+          {/* Drawer header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">New Server</h2>
+            <button onClick={() => setShowDrawer(false)} className="text-zinc-600 hover:text-zinc-300 transition-colors text-lg leading-none">✕</button>
           </div>
-          <div className="mt-5 flex justify-end">
-            <button type="submit" disabled={submitting} className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-semibold text-sm px-5 py-2 rounded-md transition-colors">
+
+          {/* Drawer body */}
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <form id="add-server-form" onSubmit={handleSubmit}>
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-zinc-400">Name <span className="text-emerald-500">*</span></label>
+                  <input className={inputClass} type="text" placeholder="Production DB" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-zinc-400">Host <span className="text-emerald-500">*</span></label>
+                  <input className={inputClass} type="text" placeholder="192.168.1.1 or example.com" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-zinc-400">Port <span className="text-emerald-500">*</span></label>
+                    <input className={inputClass} type="number" value={form.port} onChange={(e) => setForm({ ...form, port: parseInt(e.target.value) })} required />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-zinc-400">Username <span className="text-emerald-500">*</span></label>
+                    <input className={inputClass} type="text" placeholder="ubuntu" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-zinc-400">Password</label>
+                  <input className={inputClass} type="password" placeholder="Leave blank if using key" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-zinc-400">Key Path</label>
+                  <input className={inputClass} type="text" placeholder="/Users/you/.ssh/id_rsa" value={form.key_path} onChange={(e) => setForm({ ...form, key_path: e.target.value })} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-zinc-400">Private Key</label>
+                  <textarea
+                    className="bg-zinc-800 border border-zinc-700 text-zinc-100 text-xs font-mono rounded-md px-3 py-2 w-full focus:outline-none focus:border-emerald-500 placeholder:text-zinc-600 transition-colors resize-none"
+                    rows={4}
+                    placeholder={`-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----`}
+                    value={form.private_key}
+                    onChange={(e) => setForm({ ...form, private_key: e.target.value })}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-zinc-400">Group</label>
+                  <GroupSelect value={form.group || ""} onChange={(val) => setForm({ ...form, group: val })} groups={allGroups} />
+                  <p className="text-xs text-zinc-600">Select an existing group or type to create a new one.</p>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* Drawer footer */}
+          <div className="px-6 py-4 border-t border-zinc-800 flex justify-end gap-2">
+            <button type="button" onClick={() => { setShowDrawer(false); setForm(emptyForm); }} className="text-sm text-zinc-500 hover:text-zinc-300 px-4 py-2 transition-colors">Cancel</button>
+            <button type="submit" form="add-server-form" disabled={submitting} className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-semibold text-sm px-5 py-2 rounded-md transition-colors">
               {submitting ? "Adding..." : "Add Server"}
             </button>
           </div>
-        </form>
-      )}
+        </div>
+      </>
 
       {/* Edit Server Modal */}
       {editingServer && (
@@ -521,58 +578,6 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* Server List */}
-      {loading ? (
-        <div className="text-zinc-500 text-sm">Loading servers...</div>
-      ) : servers.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-zinc-800 rounded-lg">
-          <p className="text-zinc-500 text-sm">No servers yet.</p>
-          <p className="text-zinc-600 text-xs mt-1">Add one above to get started.</p>
-        </div>
-      ) : filteredServers.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-zinc-800 rounded-lg">
-          <p className="text-zinc-500 text-sm">No servers match your filters.</p>
-          <button onClick={() => { setSearch(""); setSelectedGroup(null); }} className="text-zinc-600 hover:text-zinc-400 text-xs mt-2 transition-colors">Clear filters</button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredServers.map((server) => (
-            <div key={server.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-zinc-700 transition-colors">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-zinc-100">{server.name}</h3>
-                    {server.group && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${groupColor(server.group, allGroups)}`}>
-                        {server.group}
-                      </span>
-                    )}
-                  </div>
-                  <p className="font-mono text-xs text-zinc-500 mt-0.5">{server.username}@{server.host}:{server.port}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link href={`/servers/${server.id}`} className="text-xs bg-zinc-800 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-300 font-semibold px-3 py-1.5 rounded transition-colors">Connect</Link>
-                  <button onClick={() => handlePingClick(server)} disabled={pingStatuses[server.id] === "pinging"} className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors px-2 py-1.5 disabled:opacity-50">
-                    {pingStatuses[server.id] === "pinging" ? "..." : "Ping"}
-                  </button>
-                  <button onClick={() => handleEditClick(server)} className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors px-2 py-1.5">Edit</button>
-                  <button onClick={() => handleDelete(server.id)} disabled={deletingId === server.id} className="text-xs text-zinc-600 hover:text-red-400 transition-colors px-2 py-1.5 disabled:opacity-50">
-                    {deletingId === server.id ? "..." : "Delete"}
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
-                  <span className="text-xs text-zinc-600">{server.key_path ? "SSH Key" : "Password auth"}</span>
-                </div>
-                <PingIndicator serverId={server.id} />
-              </div>
-            </div>
-          ))}
         </div>
       )}
     </div>

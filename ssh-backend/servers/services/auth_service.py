@@ -4,7 +4,6 @@ class AuthenticationError(Exception):
     pass
 
 def authenticate_user(username: str, password: str):
-    print("DEBUG:", username, password)
     user = authenticate(username=username, password=password)
 
     print("AUTH RESULT:", user)

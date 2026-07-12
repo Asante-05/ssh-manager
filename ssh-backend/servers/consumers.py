@@ -9,6 +9,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from django.contrib.auth.models import User
 from servers.models import Server, CommandLog
 from servers.encryption import decrypt_password
+from servers.ssh_client import load_private_key
 
 def authenticate_ws(query_string):
     params = dict(p.split("=") for p in query_string.split("&") if "=" in p)
@@ -80,8 +81,7 @@ class TerminalConsumer(AsyncWebsocketConsumer):
 
         if server.private_key:
             key_content = decrypt_password(server.private_key)
-            key_file = io.StringIO(key_content)
-            connect_kwargs["pkey"] = paramiko.RSAKey.from_private_key(key_file)
+            connect_kwargs["pkey"] = load_private_key(key_content)
         elif server.key_path:
             connect_kwargs["key_filename"] = server.key_path
         elif server.password:

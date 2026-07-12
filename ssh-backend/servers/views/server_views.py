@@ -96,6 +96,7 @@ def update_server(request, server_id):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def ping_server(request, server_id):
     server = get_object_or_404(Server, id=server_id)
     result = subprocess.run(

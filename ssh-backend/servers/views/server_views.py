@@ -19,14 +19,14 @@ from ..ssh_client import run_command
 @permission_classes([IsAuthenticated])
 def server_list(request):
     if request.method == 'GET':
-        servers = Server.objects.all()
+        servers = Server.objects.filter(owner=request.user)
         serializer = ServerSerializer(servers, many=True)
         return Response(serializer.data)
 
     elif request.method == 'POST':
         serializer = ServerSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(owner=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -36,7 +36,7 @@ def server_list(request):
 @api_view(['GET', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def server_detail(request, server_id):
-    server = get_object_or_404(Server, id=server_id)
+    server = get_object_or_404(Server, id=server_id, owner=request.user)
 
     if request.method == 'GET':
         serializer = ServerSerializer(server)
@@ -51,7 +51,7 @@ def server_detail(request, server_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def run_server_command(request, server_id):
-    server = get_object_or_404(Server, id=server_id)
+    server = get_object_or_404(Server, id=server_id, owner=request.user)
     command = request.data.get('command')
 
     if not command:
@@ -76,7 +76,7 @@ def run_server_command(request, server_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def server_logs(request, server_id):
-    server = get_object_or_404(Server, id=server_id)
+    server = get_object_or_404(Server, id=server_id, owner=request.user)
     logs = server.command_logs.order_by('-created_at')
     serializer = CommandLogSerializer(logs, many=True)
     return Response(serializer.data)
@@ -86,7 +86,7 @@ def server_logs(request, server_id):
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def update_server(request, server_id):
-    server = get_object_or_404(Server, id=server_id)
+    server = get_object_or_404(Server, id=server_id, owner=request.user)
     serializer = ServerSerializer(server, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
@@ -98,7 +98,7 @@ def update_server(request, server_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def ping_server(request, server_id):
-    server = get_object_or_404(Server, id=server_id)
+    server = get_object_or_404(Server, id=server_id, owner=request.user)
     result = subprocess.run(
         ["ping", "-c", "1", "-W", "2", server.host],
         capture_output=True

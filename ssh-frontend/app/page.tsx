@@ -394,38 +394,40 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredServers.map((server) => (
-            <div key={server.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-zinc-700 transition-colors">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-zinc-100">{server.name}</h3>
-                    {server.group && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${groupColor(server.group, allGroups)}`}>{server.group}</span>
-                    )}
+          {filteredServers.map((server) => {
+            return (
+              <div key={server.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-zinc-700 transition-colors">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-zinc-100">{server.name}</h3>
+                      {server.group && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${groupColor(server.group, allGroups)}`}>{server.group}</span>
+                      )}
+                    </div>
+                    <p className="font-mono text-xs text-zinc-500 mt-0.5">{server.username}@{server.host}:{server.port}</p>
                   </div>
-                  <p className="font-mono text-xs text-zinc-500 mt-0.5">{server.username}@{server.host}:{server.port}</p>
+                  <div className="flex items-center gap-2">
+                    <Link href={`/servers/${server.id}`} className="text-xs bg-zinc-800 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-300 font-semibold px-3 py-1.5 rounded transition-colors">Connect</Link>
+                    <button onClick={() => handlePingClick(server)} disabled={pingStatuses[server.id] === "pinging"} className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors px-2 py-1.5 disabled:opacity-50">
+                      {pingStatuses[server.id] === "pinging" ? "..." : "Ping"}
+                    </button>
+                    <button onClick={() => handleEditClick(server)} className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors px-2 py-1.5">Edit</button>
+                    <button onClick={() => handleDelete(server.id)} disabled={deletingId === server.id} className="text-xs text-zinc-600 hover:text-red-400 transition-colors px-2 py-1.5 disabled:opacity-50">
+                      {deletingId === server.id ? "..." : "Delete"}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Link href={`/servers/${server.id}`} className="text-xs bg-zinc-800 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-300 font-semibold px-3 py-1.5 rounded transition-colors">Connect</Link>
-                  <button onClick={() => handlePingClick(server)} disabled={pingStatuses[server.id] === "pinging"} className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors px-2 py-1.5 disabled:opacity-50">
-                    {pingStatuses[server.id] === "pinging" ? "..." : "Ping"}
-                  </button>
-                  <button onClick={() => handleEditClick(server)} className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors px-2 py-1.5">Edit</button>
-                  <button onClick={() => handleDelete(server.id)} disabled={deletingId === server.id} className="text-xs text-zinc-600 hover:text-red-400 transition-colors px-2 py-1.5 disabled:opacity-50">
-                    {deletingId === server.id ? "..." : "Delete"}
-                  </button>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
+                    <span className="text-xs text-zinc-600">{server.key_path ? "SSH Key" : "Password auth"}</span>
+                  </div>
+                  <PingIndicator serverId={server.id} />
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
-                  <span className="text-xs text-zinc-600">{server.key_path ? "SSH Key" : "Password auth"}</span>
-                </div>
-                <PingIndicator serverId={server.id} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -582,22 +584,4 @@ export default function DashboardPage() {
       )}
     </div>
   );
-
-  function PingIndicator({ serverId }: { serverId: number }) {
-    const status = pingStatuses[serverId] || "idle";
-    if (status === "idle") return null;
-    const map: Record<PingStatus, { color: string; label: string }> = {
-      idle: { color: "bg-zinc-600", label: "" },
-      pinging: { color: "bg-yellow-400 animate-pulse", label: "pinging..." },
-      online: { color: "bg-emerald-400", label: "online" },
-      offline: { color: "bg-red-400", label: "offline" },
-    };
-    const { color, label } = map[status];
-    return (
-      <div className="flex items-center gap-1.5">
-        <span className={`w-1.5 h-1.5 rounded-full ${color}`} />
-        <span className="text-xs text-zinc-500">{label}</span>
-      </div>
-    );
-  }
 }

@@ -1,9 +1,10 @@
 from pathlib import Path
 from datetime import timedelta
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-i8khpmbqc$d-no!s6#-$2h-m3t8m6vfiwbb=3f2ko67+v@lg#b'
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 
 DEBUG = True
 
@@ -99,11 +100,12 @@ CHANNEL_LAYERS = {
     }
 }
 
-ENCRYPTION_KEY = "kshnwCIBCyMj8SvBYEuH3QSCP6qLsOnAL7PT-kCU_14="
+ENCRYPTION_KEY = os.environ["ENCRYPTION_KEY"]
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": False,
+    "SIGNING_KEY": os.environ["JWT_SIGNING_KEY"],
 }

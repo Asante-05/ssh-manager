@@ -26,7 +26,8 @@ class TerminalConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         query_string = self.scope.get("query_string", b"").decode()
         try:
-            self.user = await database_sync_to_async(authenticate_ws)(query_string)
+            user = await database_sync_to_async(authenticate_ws)(query_string)
+            self.user_id = user.pk
         except Exception:
             await self.close(code=4001)
             return
@@ -45,7 +46,7 @@ class TerminalConsumer(AsyncWebsocketConsumer):
             return
 
         try:
-            server = await database_sync_to_async(Server.objects.get)(id=self.server_id)
+            server = await database_sync_to_async(Server.objects.get)(id=self.server_id, owner_id=self.user_id,)
         except Server.DoesNotExist:
             await self.send(json.dumps({"type": "error", "data": "Server not found"}))
             return
@@ -101,7 +102,8 @@ class PingConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         query_string = self.scope.get("query_string", b"").decode()
         try:
-            self.user = await database_sync_to_async(authenticate_ws)(query_string)
+            user = await database_sync_to_async(authenticate_ws)(query_string)
+            self.user_id = user.pk
         except Exception:
             await self.close(code=4001)
             return
@@ -120,7 +122,7 @@ class PingConsumer(AsyncWebsocketConsumer):
             return
 
         try:
-            server = await database_sync_to_async(Server.objects.get)(id=self.server_id)
+            server = await database_sync_to_async(Server.objects.get)(id=self.server_id, owner_id=self.user_id)
         except Server.DoesNotExist:
             await self.send(json.dumps({"type": "error", "data": "Server not found"}))
             return

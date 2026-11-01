@@ -70,7 +70,9 @@ class TerminalConsumer(AsyncWebsocketConsumer):
 
     def run_ssh_command(self, server, command):
         ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        ssh.load_system_host_keys()
+        ssh.set_missing_host_key_policy(paramiko.RejectPolicy())
 
         connect_kwargs = {
             "hostname": server.host,
@@ -88,13 +90,12 @@ class TerminalConsumer(AsyncWebsocketConsumer):
         elif server.password:
             connect_kwargs["password"] = decrypt_password(server.password)
 
-        ssh.connect(**connect_kwargs)
-        stdin, stdout, stderr = ssh.exec_command(command)
-        output = stdout.read().decode()
-        error = stderr.read().decode()
-        ssh.close()
-
-        return output + error
+        try:
+            ssh.connect(**connect_kwargs, timeout=15, banner_timeout=15, auth_timeout=15)
+            stdin, stdout, stderr = ssh.exec_command(command, timeout=120)
+            return stdout.read().decode() + stderr.read().decode()
+        finally:
+            ssh.close()
 
 
 class PingConsumer(AsyncWebsocketConsumer):

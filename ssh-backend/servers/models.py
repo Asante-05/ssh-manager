@@ -9,7 +9,7 @@ class Server(models.Model):
     password = models.CharField(max_length=500, blank=True, null=True)
     key_path = models.CharField(max_length=255, blank=True, null=True)
     private_key = models.TextField(blank=True, null=True)
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="servers", null=True)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="servers")
     group = models.CharField(max_length=100, blank=True, null=True)  # stores encrypted key content
 
     def __str__(self):
